@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MediaTracker</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <h1>Media<span>.</span>Tracker</h1>
+      <p>Tu colección personal</p>
+    </div>
+
+    <span class="nav-label">Secciones</span>
+    <a href="index.html" class="nav-item active">
+      <span class="nav-icon">⊞</span> Todos los medios
+    </a>
+    <a href="peliculas.html" class="nav-item">
+      <span class="nav-icon">🎬</span> Películas
+    </a>
+    <a href="series.html" class="nav-item">
+      <span class="nav-icon">📺</span> Series
+    </a>
+    <a href="animes.html" class="nav-item">
+      <span class="nav-icon">🎌</span> Animes
+    </a>
+    <a href="videojuegos.html" class="nav-item">
+      <span class="nav-icon">🎮</span> Videojuegos
+    </a>
+    <a href="libros.html" class="nav-item">
+      <span class="nav-icon">📚</span> Libros
+    </a>
+    <a href="tareas.html" class="nav-item">
+      <span class="nav-icon">✅</span> Tareas
+    </a>
+
+
+    <div class="sidebar-counts">
+      <p>Total por categoría</p>
+      <div class="count-row"><span>🎬 Películas</span><span class="count-badge" id="count-pelicula">0</span></div>
+      <div class="count-row"><span>📺 Series</span><span class="count-badge" id="count-serie">0</span></div>
+      <div class="count-row"><span>🎌 Animes</span><span class="count-badge" id="count-anime">0</span></div>
+      <div class="count-row"><span>🎮 Videojuegos</span><span class="count-badge" id="count-videojuego">0</span></div>
+      <div class="count-row"><span>📚 Libros</span><span class="count-badge" id="count-libro">0</span></div>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="topbar">
+      <span class="topbar-title">Listado de medias</span>
+      <div class="topbar-actions">
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="search-input" placeholder="Buscar en tu colección...">
+        </div>
+      </div>
+    </div>
+
+    <div class="page-content">
+      <!-- Stats -->
+      <div class="stats-row" id="stats-row"></div>
+
+      <!-- Type filters -->
+      <div class="filter-bar" id="type-filters">
+        <span class="filter-label">Tipo:</span>
+        <button class="filter-btn active" data-type="all">Todos</button>
+        <button class="filter-btn" data-type="pelicula">🎬 Películas</button>
+        <button class="filter-btn" data-type="serie">📺 Series</button>
+        <button class="filter-btn" data-type="anime">🎌 Animes</button>
+        <button class="filter-btn" data-type="videojuego">🎮 Videojuegos</button>
+        <button class="filter-btn" data-type="libro">📚 Libros</button>
+      </div>
+
+      <!-- Status filters -->
+      <div class="filter-bar" id="status-filters">
+        <span class="filter-label">Estado:</span>
+        <button class="filter-btn active" data-status="all">Todos</button>
+        <button class="filter-btn" data-status="pending">Pendiente</button>
+        <button class="filter-btn" data-status="progress">En progreso</button>
+        <button class="filter-btn" data-status="completed">Completado</button>
+        <button class="filter-btn" data-status="abandoned">Abandonado</button>
+      </div>
+
+      <!-- Grid -->
+      <div class="media-grid" id="media-grid"></div>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+  <script>
+    let activeType = 'all';
+    let activeStatus = 'all';
+    let searchQuery = '';
+
+    function renderPage() {
+      renderStats();
+      renderGrid();
+    }
+
+    function renderStats() {
+      const data = loadData();
+      const total = data.items.length;
+      const completed = data.items.filter(i => i.status === 'completed').length;
+      const inProgress = data.items.filter(i => i.status === 'progress').length;
+      const pending = data.items.filter(i => i.status === 'pending').length;
+
+      document.getElementById('stats-row').innerHTML = `
+        <div class="stat-pill"><strong>${total}</strong> en total</div>
+        <div class="stat-pill"><strong>${completed}</strong> completados</div>
+        <div class="stat-pill"><strong>${inProgress}</strong> en progreso</div>
+        <div class="stat-pill"><strong>${pending}</strong> pendientes</div>
+      `;
+    }
+
+    function renderGrid() {
+      const data = loadData();
+      let items = data.items;
+
+      if (activeType !== 'all') items = items.filter(i => i.type === activeType);
+      if (activeStatus !== 'all') items = items.filter(i => i.status === activeStatus || (activeStatus === 'abandoned' && i.status === 'abandoned'));
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        items = items.filter(i => i.title.toLowerCase().includes(q) || (i.author||'').toLowerCase().includes(q));
+      }
+
+      const grid = document.getElementById('media-grid');
+      if (!items.length) {
+        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">📭</div>No hay títulos que mostrar.<br>Ve a una sección para añadir.</div>`;
+        return;
+      }
+
+      grid.innerHTML = items.map(item => `
+        <div class="media-card ${item.status === 'abandoned' ? 'abandoned' : ''}">
+          <div class="card-poster">${posterEl(item.poster, item.type)}</div>
+          <div class="card-body">
+            <div class="card-title" title="${item.title}">${item.title}</div>
+            <div class="card-meta">${item.year || '—'}${item.author ? ' · ' + item.author : ''}</div>
+            ${item.platform ? `<div class="card-platform">${item.platform}</div>` : ''}
+            <div class="card-tags">
+              <span class="tag tag-type-${item.type}">${typeLabel(item.type)}</span>
+              <span class="tag tag-${item.status}">${statusLabel(item.status)}</span>
+              ${item.score ? `<span class="tag" style="background:rgba(232,255,71,0.1);color:var(--accent)">★ ${item.score}</span>` : ''}
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Filters
+    document.getElementById('type-filters').addEventListener('click', e => {
+      const btn = e.target.closest('.filter-btn');
+      if (!btn) return;
+      document.querySelectorAll('#type-filters .filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeType = btn.dataset.type;
+      renderGrid();
+    });
+
+    document.getElementById('status-filters').addEventListener('click', e => {
+      const btn = e.target.closest('.filter-btn');
+      if (!btn) return;
+      document.querySelectorAll('#status-filters .filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeStatus = btn.dataset.status;
+      renderGrid();
+    });
+
+    document.getElementById('search-input').addEventListener('input', e => {
+      searchQuery = e.target.value;
+      renderGrid();
+    });
+
+    document.addEventListener('DOMContentLoaded', renderPage);
+  </script>
+</body>
+</html>

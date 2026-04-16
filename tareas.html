@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MediaTracker · Tareas</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* ── TAREAS PAGE STYLES ───────────────────────────────────────────── */
+
+    /* Board wrapper with arrow buttons */
+    .tareas-board-wrapper {
+      position: relative;
+    }
+
+    .board-scroll-btn {
+      display: none;
+      position: fixed;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 200;
+      width: 44px;
+      height: 70px;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      font-size: 1.4rem;
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, color 0.15s;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+    .board-scroll-btn:hover { background: var(--bg4); color: var(--accent); }
+    .board-scroll-btn.visible { display: flex; }
+    /* left button sits right at the edge of the main content area (sidebar = 260px) */
+    .board-scroll-btn.left  { left: 260px; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; border-left: none; }
+    .board-scroll-btn.right { right: 0;    border-radius: var(--radius-sm) 0 0 var(--radius-sm); border-right: none; }
+
+    .tareas-board {
+      display: flex;
+      gap: 1.2rem;
+      align-items: flex-start;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      padding-bottom: 1rem;
+      scroll-behavior: smooth;
+      /* Hide scrollbar visually but keep functional */
+      scrollbar-width: thin;
+    }
+
+    /* ── TASK LIST COLUMN ── */
+    .task-list-col {
+      flex: 0 0 300px;
+      width: 300px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .task-list-col.color-red    { border-top: 3px solid #ff5555; }
+    .task-list-col.color-orange { border-top: 3px solid #ff9944; }
+    .task-list-col.color-yellow { border-top: 3px solid #e8ff47; }
+    .task-list-col.color-green  { border-top: 3px solid #4dff91; }
+    .task-list-col.color-blue   { border-top: 3px solid #5599ff; }
+    .task-list-col.color-purple { border-top: 3px solid #aa77ff; }
+    .task-list-col.color-pink   { border-top: 3px solid #ff77bb; }
+    .task-list-col.color-gray   { border-top: 3px solid #666; }
+
+    .task-list-header {
+      padding: 0.9rem 1rem 0.8rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .task-list-title {
+      flex: 1;
+      font-family: 'Syne', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 700;
+      background: none;
+      border: none;
+      color: var(--text);
+      outline: none;
+      min-width: 0;
+      cursor: text;
+    }
+    .task-list-title:focus {
+      border-bottom: 1px solid var(--border2);
+    }
+
+    /* Color picker */
+    .color-picker-wrap { position: relative; }
+    .color-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid rgba(255,255,255,0.15);
+      flex-shrink: 0;
+      transition: transform 0.15s;
+    }
+    .color-dot:hover { transform: scale(1.25); }
+    .color-dot.red    { background: #ff5555; }
+    .color-dot.orange { background: #ff9944; }
+    .color-dot.yellow { background: #e8ff47; }
+    .color-dot.green  { background: #4dff91; }
+    .color-dot.blue   { background: #5599ff; }
+    .color-dot.purple { background: #aa77ff; }
+    .color-dot.pink   { background: #ff77bb; }
+    .color-dot.gray   { background: #666; }
+
+    .color-palette {
+      display: none;
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      padding: 8px;
+      flex-wrap: wrap;
+      gap: 6px;
+      width: 120px;
+      z-index: 500;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    .color-palette.open { display: flex; }
+    .color-palette-dot {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: transform 0.15s, border-color 0.15s;
+    }
+    .color-palette-dot:hover { transform: scale(1.2); }
+    .color-palette-dot.active { border-color: rgba(255,255,255,0.6); }
+    .color-palette-dot.red    { background: #ff5555; }
+    .color-palette-dot.orange { background: #ff9944; }
+    .color-palette-dot.yellow { background: #e8ff47; }
+    .color-palette-dot.green  { background: #4dff91; }
+    .color-palette-dot.blue   { background: #5599ff; }
+    .color-palette-dot.purple { background: #aa77ff; }
+    .color-palette-dot.pink   { background: #ff77bb; }
+    .color-palette-dot.gray   { background: #666; }
+
+    .task-list-delete {
+      background: none;
+      border: none;
+      color: var(--text3);
+      cursor: pointer;
+      font-size: 0.9rem;
+      padding: 2px 4px;
+      border-radius: 4px;
+      transition: color 0.15s;
+      flex-shrink: 0;
+    }
+    .task-list-delete:hover { color: var(--red); }
+
+    /* ── TASK ITEMS ── */
+    .task-items {
+      padding: 0.5rem 0.7rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      min-height: 40px;
+    }
+
+    .task-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 4px;
+      border-radius: 6px;
+      transition: background 0.15s;
+      cursor: default;
+    }
+    .task-item:hover { background: rgba(255,255,255,0.03); }
+    .task-item.dragging { opacity: 0.3; }
+
+    .task-drag-handle {
+      cursor: grab;
+      display: flex;
+      flex-direction: column;
+      gap: 2.5px;
+      padding: 2px;
+      opacity: 0;
+      transition: opacity 0.15s;
+      flex-shrink: 0;
+      touch-action: none;
+    }
+    .task-drag-handle:active { cursor: grabbing; }
+    .task-drag-handle span {
+      display: block;
+      width: 11px;
+      height: 1.5px;
+      background: var(--text3);
+      border-radius: 2px;
+    }
+    .task-item:hover .task-drag-handle { opacity: 1; }
+
+    .task-checkbox {
+      width: 15px;
+      height: 15px;
+      border: 1.5px solid var(--border2);
+      border-radius: 4px;
+      background: transparent;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      flex-shrink: 0;
+      position: relative;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .task-checkbox:checked {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+    .task-checkbox:checked::after {
+      content: '';
+      position: absolute;
+      left: 3px; top: 1px;
+      width: 5px; height: 8px;
+      border: 2px solid #000;
+      border-top: none;
+      border-left: none;
+      transform: rotate(45deg);
+    }
+
+    .task-text {
+      flex: 1;
+      font-size: 0.85rem;
+      color: var(--text);
+      background: none;
+      border: none;
+      outline: none;
+      font-family: 'DM Sans', sans-serif;
+      min-width: 0;
+      padding: 0;
+      cursor: text;
+    }
+    .task-text.done {
+      text-decoration: line-through;
+      color: var(--text3);
+    }
+
+    .task-delete {
+      background: none;
+      border: none;
+      color: var(--text3);
+      cursor: pointer;
+      font-size: 0.75rem;
+      padding: 2px 5px;
+      border-radius: 3px;
+      transition: color 0.15s;
+      opacity: 0;
+      flex-shrink: 0;
+    }
+    .task-item:hover .task-delete { opacity: 1; }
+    .task-delete:hover { color: var(--red); }
+
+    /* Drag placeholder for tasks */
+    .task-drag-placeholder {
+      height: 30px;
+      background: rgba(232,255,71,0.05);
+      border: 1.5px dashed rgba(232,255,71,0.2);
+      border-radius: 5px;
+      margin: 2px 0;
+      pointer-events: none;
+    }
+
+    /* ── ADD TASK ROW ── */
+    .task-add-row {
+      padding: 0.5rem 1rem 0.8rem;
+      border-top: 1px solid var(--border);
+    }
+    .task-add-input {
+      width: 100%;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.82rem;
+      padding: 0.4rem 0.7rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .task-add-input:focus { border-color: var(--accent); }
+    .task-add-input::placeholder { color: var(--text3); }
+
+    /* ── ADD LIST BUTTON ── */
+    .add-list-btn {
+      flex: 0 0 auto;
+      width: 260px;
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      background: transparent;
+      color: var(--text3);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+      padding: 2rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 120px;
+    }
+    .add-list-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* Progress bar */
+    .task-progress-bar {
+      height: 2px;
+      background: var(--bg4);
+      position: relative;
+      overflow: hidden;
+    }
+    .task-progress-fill {
+      height: 100%;
+      background: var(--accent);
+      transition: width 0.3s;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <h1>Media<span>.</span>Tracker</h1>
+      <p>Tu colección personal</p>
+    </div>
+
+    <span class="nav-label">Secciones</span>
+    <a href="index.html" class="nav-item">
+      <span class="nav-icon">⊞</span> Todos los medios
+    </a>
+    <a href="peliculas.html" class="nav-item">
+      <span class="nav-icon">🎬</span> Películas
+    </a>
+    <a href="series.html" class="nav-item">
+      <span class="nav-icon">📺</span> Series
+    </a>
+    <a href="animes.html" class="nav-item">
+      <span class="nav-icon">🎌</span> Animes
+    </a>
+    <a href="videojuegos.html" class="nav-item">
+      <span class="nav-icon">🎮</span> Videojuegos
+    </a>
+    <a href="libros.html" class="nav-item">
+      <span class="nav-icon">📚</span> Libros
+    </a>
+    <a href="tareas.html" class="nav-item active">
+      <span class="nav-icon">✅</span> Tareas
+    </a>
+
+    <div class="sidebar-counts">
+      <p>Total por categoría</p>
+      <div class="count-row"><span>🎬 Películas</span><span class="count-badge" id="count-pelicula">0</span></div>
+      <div class="count-row"><span>📺 Series</span><span class="count-badge" id="count-serie">0</span></div>
+      <div class="count-row"><span>🎌 Animes</span><span class="count-badge" id="count-anime">0</span></div>
+      <div class="count-row"><span>🎮 Videojuegos</span><span class="count-badge" id="count-videojuego">0</span></div>
+      <div class="count-row"><span>📚 Libros</span><span class="count-badge" id="count-libro">0</span></div>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="topbar">
+      <span class="topbar-title">✅ Tareas</span>
+      <div class="topbar-actions">
+        <button class="btn-add" onclick="addList()">＋ Nueva lista</button>
+      </div>
+    </div>
+
+    <div class="page-content">
+      <div class="tareas-board-wrapper">
+        <button class="board-scroll-btn left" id="scroll-left" onclick="scrollBoard(-1)">&#8249;</button>
+        <div class="tareas-board" id="tareas-board"></div>
+        <button class="board-scroll-btn right" id="scroll-right" onclick="scrollBoard(1)">&#8250;</button>
+      </div>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+  <script>
+    // ── TAREAS STORAGE ────────────────────────────────────────────────────────
+    const TAREAS_KEY = 'mediatracker_tareas_v1';
+    const COLORS = ['yellow','blue','green','red','orange','purple','pink','gray'];
+
+    function loadTareas() {
+      try { return JSON.parse(localStorage.getItem(TAREAS_KEY)) || { lists: [] }; }
+      catch { return { lists: [] }; }
+    }
+    function saveTareas(data) {
+      localStorage.setItem(TAREAS_KEY, JSON.stringify(data));
+    }
+
+    // ── RENDER ────────────────────────────────────────────────────────────────
+    function renderBoard() {
+      const data = loadTareas();
+      const board = document.getElementById('tareas-board');
+      board.innerHTML = '';
+
+      data.lists.forEach(list => {
+        board.appendChild(buildListCol(list));
+      });
+
+      // Add list button
+      const addBtn = document.createElement('button');
+      addBtn.className = 'add-list-btn';
+      addBtn.innerHTML = `<span style="font-size:1.4rem">＋</span> Nueva lista`;
+      addBtn.onclick = addList;
+      board.appendChild(addBtn);
+
+      // Init drag for each list
+      data.lists.forEach(list => initTaskDrag(list.id));
+
+      updateSidebarCounts();
+      // Update scroll arrows after render
+      setTimeout(updateScrollArrows, 0);
+    }
+
+    function buildListCol(list) {
+      const col = document.createElement('div');
+      col.className = `task-list-col color-${list.color || 'yellow'}`;
+      col.dataset.listId = list.id;
+
+      const done = list.tasks.filter(t => t.done).length;
+      const total = list.tasks.length;
+      const pct = total ? Math.round(done / total * 100) : 0;
+
+      col.innerHTML = `
+        <div class="task-list-header">
+          <div class="color-picker-wrap" data-list="${list.id}">
+            <div class="color-dot ${list.color || 'yellow'}" onclick="togglePalette('${list.id}')"></div>
+            <div class="color-palette" id="palette-${list.id}">
+              ${COLORS.map(c => `<div class="color-palette-dot ${c} ${list.color === c ? 'active' : ''}" onclick="setColor('${list.id}','${c}')"></div>`).join('')}
+            </div>
+          </div>
+          <input class="task-list-title"
+                 value="${escHtml(list.title)}"
+                 placeholder="Nombre de la lista"
+                 onchange="renameList('${list.id}', this.value)"
+                 onblur="renameList('${list.id}', this.value)">
+          <span style="font-size:0.7rem;color:var(--text3);white-space:nowrap">${done}/${total}</span>
+          <button class="task-list-delete" onclick="deleteList('${list.id}')" title="Eliminar lista">✕</button>
+        </div>
+        <div class="task-progress-bar">
+          <div class="task-progress-fill" style="width:${pct}%"></div>
+        </div>
+        <div class="task-items" id="tasks-${list.id}">
+          ${list.tasks.map(t => buildTaskHTML(list.id, t)).join('')}
+        </div>
+        <div class="task-add-row">
+          <input class="task-add-input"
+                 placeholder="+ Añadir tarea…"
+                 onkeydown="handleTaskInput(event, '${list.id}', this)">
+        </div>
+      `;
+      return col;
+    }
+
+    function buildTaskHTML(listId, task) {
+      return `
+        <div class="task-item" data-task-id="${task.id}">
+          <div class="task-drag-handle" title="Arrastrar">
+            <span></span><span></span><span></span>
+          </div>
+          <input type="checkbox" class="task-checkbox" ${task.done ? 'checked' : ''}
+                 onchange="toggleTask('${listId}','${task.id}',this.checked)">
+          <input type="text" class="task-text ${task.done ? 'done' : ''}"
+                 value="${escHtml(task.text)}"
+                 onchange="editTask('${listId}','${task.id}',this.value)"
+                 onkeydown="if(event.key==='Enter'){this.blur();}">
+          <button class="task-delete" onclick="deleteTask('${listId}','${task.id}')" title="Eliminar">✕</button>
+        </div>`;
+    }
+
+    function escHtml(str) {
+      return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ── ACTIONS ───────────────────────────────────────────────────────────────
+    function addList() {
+      const data = loadTareas();
+      const id = Date.now().toString();
+      data.lists.push({ id, title: 'Nueva lista', color: 'yellow', tasks: [] });
+      saveTareas(data);
+      renderBoard();
+      // Focus the title
+      setTimeout(() => {
+        const input = document.querySelector(`[data-list-id="${id}"] .task-list-title`);
+        if (input) { input.focus(); input.select(); }
+      }, 50);
+    }
+
+    function deleteList(listId) {
+      if (!confirm('¿Eliminar esta lista y todas sus tareas?')) return;
+      const data = loadTareas();
+      data.lists = data.lists.filter(l => l.id !== listId);
+      saveTareas(data);
+      renderBoard();
+    }
+
+    function renameList(listId, value) {
+      const data = loadTareas();
+      const list = data.lists.find(l => l.id === listId);
+      if (list) { list.title = value; saveTareas(data); }
+    }
+
+    function setColor(listId, color) {
+      const data = loadTareas();
+      const list = data.lists.find(l => l.id === listId);
+      if (list) { list.color = color; saveTareas(data); }
+      closePalettes();
+      renderBoard();
+    }
+
+    function togglePalette(listId) {
+      closePalettes();
+      const p = document.getElementById(`palette-${listId}`);
+      if (p) p.classList.toggle('open');
+    }
+
+    function closePalettes() {
+      document.querySelectorAll('.color-palette.open').forEach(p => p.classList.remove('open'));
+    }
+    document.addEventListener('click', e => {
+      if (!e.target.closest('.color-picker-wrap')) closePalettes();
+    });
+
+    function handleTaskInput(e, listId, input) {
+      if (e.key === 'Enter' && input.value.trim()) {
+        addTask(listId, input.value.trim());
+        input.value = '';
+      }
+    }
+
+    function addTask(listId, text) {
+      const data = loadTareas();
+      const list = data.lists.find(l => l.id === listId);
+      if (!list) return;
+      const id = Date.now().toString();
+      list.tasks.push({ id, text, done: false });
+      saveTareas(data);
+      // Partial re-render: rebuild task items + progress
+      reRenderList(listId);
+      initTaskDrag(listId);
+    }
+
+    function deleteTask(listId, taskId) {
+      const data = loadTareas();
+      const list = data.lists.find(l => l.id === listId);
+      if (list) {
+        list.tasks = list.tasks.filter(t => t.id !== taskId);
+        saveTareas(data);
+        reRenderList(listId);
+        initTaskDrag(listId);
+      }
+    }
+
+    function toggleTask(listId, taskId, checked) {
+      const data = loadTareas();
+      const list = data.lists.find(l => l.id === listId);
+      const task = list?.tasks.find(t => t.id === taskId);
+      if (task) {
+        task.done = checked;
+        saveTareas(data);
+        // Update text style and progress without full re-render
+        const textEl = document.querySelector(`[data-task-id="${taskId}"] .task-text`);
+        if (textEl) textEl.classList.toggle('done', checked);
+        updateProgress(listId, list);
+      }
+    }
+
+    function editTask(listId, taskId, value) {
+      const data = loadTareas();
+      const list = data.lists.find(l => l.id === listId);
+      const task = list?.tasks.find(t => t.id === taskId);
+      if (task) { task.text = value; saveTareas(data); }
+    }
+
+    function reRenderList(listId) {
+      const data = loadTareas();
+      const list = data.lists.find(l => l.id === listId);
+      if (!list) return;
+      const container = document.getElementById(`tasks-${listId}`);
+      if (container) container.innerHTML = list.tasks.map(t => buildTaskHTML(listId, t)).join('');
+      updateProgress(listId, list);
+      // Re-attach pointer drag since innerHTML was rebuilt
+      initTaskDrag(listId);
+    }
+
+    function updateProgress(listId, list) {
+      const col = document.querySelector(`[data-list-id="${listId}"]`);
+      if (!col) return;
+      const done = list.tasks.filter(t => t.done).length;
+      const total = list.tasks.length;
+      const pct = total ? Math.round(done / total * 100) : 0;
+      const fill = col.querySelector('.task-progress-fill');
+      const countEl = col.querySelector('span[style]');
+      if (fill) fill.style.width = pct + '%';
+      if (countEl) countEl.textContent = `${done}/${total}`;
+    }
+
+    // ── TASK DRAG & DROP (pointer-based, same system as kanban) ──────────────
+    let _tDrag = null; // { dragEl, ghost, placeholder, container, listId, offsetX, offsetY }
+
+    function initTaskDrag(listId) {
+      const container = document.getElementById(`tasks-${listId}`);
+      if (!container) return;
+      // Remove any old listener to avoid duplicates
+      container.removeEventListener('pointerdown', _taskPointerDownHandler);
+      container._taskListId = listId;
+      container.addEventListener('pointerdown', _taskPointerDownHandler);
+    }
+
+    function _taskPointerDownHandler(e) {
+      const handle = e.target.closest('.task-drag-handle');
+      if (!handle) return;
+      const item = handle.closest('.task-item');
+      const container = handle.closest('.task-items');
+      if (!item || !container) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const rect = item.getBoundingClientRect();
+      const offsetY = e.clientY - rect.top;
+      const offsetX = e.clientX - rect.left;
+
+      // Ghost clone
+      const ghost = item.cloneNode(true);
+      ghost.style.cssText = `
+        position:fixed;top:${rect.top}px;left:${rect.left}px;
+        width:${rect.width}px;height:${rect.height}px;
+        z-index:9999;pointer-events:none;opacity:0.9;
+        transform:scale(1.02);
+        box-shadow:0 8px 24px rgba(0,0,0,0.6);
+        border-radius:6px;background:var(--bg3);
+        transition:none;
+      `;
+      document.body.appendChild(ghost);
+
+      // Placeholder
+      const placeholder = document.createElement('div');
+      placeholder.className = 'task-drag-placeholder';
+      item.after(placeholder);
+      item.classList.add('dragging');
+
+      _tDrag = { dragEl: item, ghost, placeholder, container, listId: container._taskListId, offsetY, offsetX };
+
+      document.addEventListener('pointermove', _taskPointerMove, { passive: false });
+      document.addEventListener('pointerup',   _taskPointerUp);
+      document.addEventListener('pointercancel', _taskPointerCancel);
+    }
+
+    function _taskPointerMove(e) {
+      if (!_tDrag) return;
+      e.preventDefault();
+      const { ghost, placeholder, container, offsetY, offsetX } = _tDrag;
+
+      ghost.style.top  = (e.clientY - offsetY) + 'px';
+      ghost.style.left = (e.clientX - offsetX) + 'px';
+
+      // Find insertion point
+      const items = [...container.querySelectorAll('.task-item:not(.dragging)')];
+      let afterEl = null;
+      for (const c of items) {
+        const box = c.getBoundingClientRect();
+        if (e.clientY < box.top + box.height / 2) { afterEl = c; break; }
+      }
+      if (afterEl) container.insertBefore(placeholder, afterEl);
+      else container.appendChild(placeholder);
+    }
+
+    function _taskPointerUp() {
+      if (!_tDrag) return;
+      const { dragEl, ghost, placeholder, container, listId } = _tDrag;
+      placeholder.replaceWith(dragEl);
+      dragEl.classList.remove('dragging');
+      ghost.remove();
+      saveTaskOrder(listId, container);
+      _tDrag = null;
+      document.removeEventListener('pointermove', _taskPointerMove);
+      document.removeEventListener('pointerup',   _taskPointerUp);
+      document.removeEventListener('pointercancel', _taskPointerCancel);
+    }
+
+    function _taskPointerCancel() {
+      if (!_tDrag) return;
+      const { dragEl, ghost, placeholder } = _tDrag;
+      if (placeholder?.parentNode) placeholder.parentNode.removeChild(placeholder);
+      dragEl.classList.remove('dragging');
+      ghost.remove();
+      _tDrag = null;
+      document.removeEventListener('pointermove', _taskPointerMove);
+      document.removeEventListener('pointerup',   _taskPointerUp);
+      document.removeEventListener('pointercancel', _taskPointerCancel);
+    }
+
+    function saveTaskOrder(listId, container) {
+      const data = loadTareas();
+      const list = data.lists.find(l => l.id === listId);
+      if (!list) return;
+      const orderedIds = [...container.querySelectorAll('.task-item')].map(el => el.dataset.taskId);
+      list.tasks = orderedIds.map(id => list.tasks.find(t => t.id === id)).filter(Boolean);
+      saveTareas(data);
+    }
+
+    // ── BOARD SCROLL ARROWS ───────────────────────────────────────────────────
+    function scrollBoard(dir) {
+      const board = document.getElementById('tareas-board');
+      board.scrollBy({ left: dir * 320, behavior: 'smooth' });
+    }
+
+    function updateScrollArrows() {
+      const board = document.getElementById('tareas-board');
+      if (!board) return;
+      const btnLeft  = document.getElementById('scroll-left');
+      const btnRight = document.getElementById('scroll-right');
+      // Show arrows only when board actually overflows
+      const overflows = board.scrollWidth > board.clientWidth + 8;
+      const canScrollLeft  = overflows && board.scrollLeft > 4;
+      const canScrollRight = overflows && board.scrollLeft + board.clientWidth < board.scrollWidth - 4;
+      btnLeft.classList.toggle('visible', canScrollLeft);
+      btnRight.classList.toggle('visible', canScrollRight);
+    }
+
+    // ── INIT ──────────────────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', () => {
+      const board = document.getElementById('tareas-board');
+      board.addEventListener('scroll', updateScrollArrows);
+      window.addEventListener('resize', updateScrollArrows);
+      renderBoard();
+    });
+  </script>
+</body>
+</html>
