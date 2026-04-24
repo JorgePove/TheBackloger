@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>El.Trackerino</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0b0b0d;
+      --bg2:     #111113;
+      --bg3:     #18181c;
+      --bg4:     #202026;
+      --border:  rgba(255,255,255,0.07);
+      --border2: rgba(255,255,255,0.13);
+      --text:    #f0f0f0;
+      --text2:   #888;
+      --text3:   #444;
+      --accent:  #e8ff47;
+      --accent2: #c8dc30;
+      --red:     #ff5555;
+      --green:   #4dff91;
+      --blue:    #5599ff;
+      --orange:  #ff9944;
+      --purple:  #aa77ff;
+    }
+
+    html, body {
+      min-height: 100vh;
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    /* ── NOISE TEXTURE ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      background-size: 200px 200px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── AMBIENT GLOW BG ── */
+    .ambient {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+    .ambient-blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(120px);
+      opacity: 0.07;
+      animation: blobDrift 18s ease-in-out infinite alternate;
+    }
+    .ambient-blob:nth-child(1) {
+      width: 600px; height: 600px;
+      background: var(--accent);
+      top: -200px; left: -100px;
+      animation-delay: 0s;
+    }
+    .ambient-blob:nth-child(2) {
+      width: 500px; height: 500px;
+      background: var(--purple);
+      bottom: -150px; right: -100px;
+      animation-delay: -6s;
+    }
+    .ambient-blob:nth-child(3) {
+      width: 400px; height: 400px;
+      background: var(--blue);
+      top: 40%; left: 50%;
+      transform: translate(-50%, -50%);
+      animation-delay: -12s;
+    }
+    @keyframes blobDrift {
+      0%   { transform: scale(1) translate(0, 0); }
+      100% { transform: scale(1.15) translate(30px, -20px); }
+    }
+
+    /* ── WRAPPER ── */
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 4rem 2rem 5rem;
+    }
+
+    /* ── HEADER / TITLE ── */
+    .header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 3.5rem;
+    }
+
+    .title-frame {
+      position: relative;
+      padding: 1.4rem 3.2rem;
+      border: 1px solid rgba(232,255,71,0.25);
+      border-radius: 16px;
+      background: rgba(232,255,71,0.03);
+      animation: framePulse 3s ease-in-out infinite;
+    }
+
+    @keyframes framePulse {
+      0%, 100% {
+        box-shadow:
+          0 0 20px rgba(232,255,71,0.08),
+          0 0 60px rgba(232,255,71,0.04),
+          inset 0 0 30px rgba(232,255,71,0.02);
+        border-color: rgba(232,255,71,0.2);
+      }
+      50% {
+        box-shadow:
+          0 0 35px rgba(232,255,71,0.18),
+          0 0 100px rgba(232,255,71,0.08),
+          inset 0 0 40px rgba(232,255,71,0.05);
+        border-color: rgba(232,255,71,0.45);
+      }
+    }
+
+    /* Corner accents */
+    .title-frame::before, .title-frame::after {
+      content: '';
+      position: absolute;
+      width: 10px; height: 10px;
+      border-color: var(--accent);
+      border-style: solid;
+    }
+    .title-frame::before {
+      top: -1px; left: -1px;
+      border-width: 2px 0 0 2px;
+      border-radius: 4px 0 0 0;
+    }
+    .title-frame::after {
+      bottom: -1px; right: -1px;
+      border-width: 0 2px 2px 0;
+      border-radius: 0 0 4px 0;
+    }
+
+    .title-inner {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--text);
+      line-height: 1;
+      white-space: nowrap;
+    }
+    .title-inner span { color: var(--accent); }
+
+    .title-sub {
+      margin-top: 0.8rem;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      color: var(--text3);
+      text-align: center;
+    }
+
+    /* ── YEAR TABS ── */
+    .year-section {
+      width: 100%;
+      max-width: 780px;
+      margin-bottom: 2.8rem;
+    }
+
+    .year-tabs-label {
+      font-size: 0.62rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--text3);
+      margin-bottom: 0.8rem;
+      text-align: center;
+    }
+
+    .year-tabs-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .year-tab {
+      position: relative;
+      padding: 0.55rem 1.5rem;
+      border-radius: 8px;
+      border: 1px solid var(--border2);
+      background: var(--bg2);
+      color: var(--text2);
+      font-family: 'Syne', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 0.04em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .year-tab:hover {
+      border-color: rgba(232,255,71,0.3);
+      color: var(--text);
+      background: var(--bg3);
+    }
+    .year-tab.active {
+      background: rgba(232,255,71,0.1);
+      border-color: rgba(232,255,71,0.5);
+      color: var(--accent);
+      box-shadow: 0 0 20px rgba(232,255,71,0.08);
+    }
+
+    .year-tab-delete {
+      display: none;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: rgba(255,85,85,0.15);
+      border: 1px solid rgba(255,85,85,0.3);
+      color: var(--red);
+      font-size: 0.6rem;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.15s;
+      flex-shrink: 0;
+      line-height: 1;
+    }
+    .year-tab:hover .year-tab-delete { display: flex; }
+    .year-tab-delete:hover { background: rgba(255,85,85,0.3); }
+
+    .year-add-btn {
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      border: 1px dashed var(--border2);
+      background: transparent;
+      color: var(--text3);
+      font-size: 1.2rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .year-add-btn:hover {
+      border-color: rgba(232,255,71,0.4);
+      color: var(--accent);
+      background: rgba(232,255,71,0.05);
+    }
+
+    /* ── SECTION GRID ── */
+    .sections-grid {
+      width: 100%;
+      max-width: 780px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .section-btn {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      padding: 2.2rem 1.5rem;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: var(--bg2);
+      cursor: pointer;
+      text-decoration: none;
+      color: var(--text2);
+      transition: all 0.25s cubic-bezier(0.2, 0.8, 0.3, 1);
+      overflow: hidden;
+      group: true;
+    }
+
+    /* Hover glow bg */
+    .section-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 0.3s;
+      border-radius: inherit;
+    }
+    .section-btn:hover::before { opacity: 1; }
+
+    .section-btn:hover {
+      transform: translateY(-5px);
+      border-color: rgba(255,255,255,0.15);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    }
+
+    /* Per-section colors */
+    .sec-peliculas::before  { background: radial-gradient(circle at 50% 100%, rgba(232,255,71,0.08), transparent 70%); }
+    .sec-series::before     { background: radial-gradient(circle at 50% 100%, rgba(85,153,255,0.1), transparent 70%); }
+    .sec-animes::before     { background: radial-gradient(circle at 50% 100%, rgba(170,119,255,0.1), transparent 70%); }
+    .sec-videojuegos::before { background: radial-gradient(circle at 50% 100%, rgba(77,255,145,0.08), transparent 70%); }
+    .sec-libros::before     { background: radial-gradient(circle at 50% 100%, rgba(255,153,68,0.09), transparent 70%); }
+    .sec-tareas::before     { background: radial-gradient(circle at 50% 100%, rgba(255,85,85,0.07), transparent 70%); }
+
+    .sec-peliculas:hover   { border-color: rgba(232,255,71,0.3);  color: var(--accent);  }
+    .sec-series:hover      { border-color: rgba(85,153,255,0.35); color: #7ab4ff; }
+    .sec-animes:hover      { border-color: rgba(170,119,255,0.3); color: var(--purple); }
+    .sec-videojuegos:hover { border-color: rgba(77,255,145,0.3);  color: var(--green); }
+    .sec-libros:hover      { border-color: rgba(255,153,68,0.3);  color: var(--orange); }
+    .sec-tareas:hover      { border-color: rgba(255,85,85,0.3);   color: var(--red); }
+
+    .section-emoji {
+      font-size: 2.2rem;
+      line-height: 1;
+      transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.3, 1);
+      filter: drop-shadow(0 0 0px transparent);
+    }
+    .section-btn:hover .section-emoji {
+      transform: scale(1.18) translateY(-3px);
+    }
+
+    .section-label {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      transition: color 0.2s;
+    }
+
+    .section-count {
+      position: absolute;
+      top: 12px; right: 14px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      background: var(--bg4);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 2px 8px;
+      color: var(--text3);
+      transition: all 0.2s;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .section-btn:hover .section-count {
+      background: rgba(255,255,255,0.08);
+      color: var(--text2);
+    }
+
+    /* ── FOOTER ACTIONS ── */
+    .footer-actions {
+      margin-top: 3rem;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .foot-btn {
+      padding: 0.5rem 1.3rem;
+      border-radius: 8px;
+      border: 1px solid var(--border2);
+      background: var(--bg2);
+      color: var(--text3);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: all 0.18s;
+    }
+    .foot-btn:hover {
+      border-color: var(--border2);
+      color: var(--text2);
+      background: var(--bg3);
+    }
+
+    /* ── TOAST ── */
+    .toast {
+      position: fixed;
+      bottom: 2rem; left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      padding: 0.6rem 1.4rem;
+      font-size: 0.82rem;
+      color: var(--text);
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.25s;
+      z-index: 999;
+      white-space: nowrap;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    .toast.success { border-color: rgba(77,255,145,0.4); color: var(--green); }
+    .toast.error   { border-color: rgba(255,85,85,0.4);  color: var(--red); }
+
+    /* ── ANIMATIONS (stagger on load) ── */
+    .header, .year-section, .sections-grid, .footer-actions {
+      animation: fadeUp 0.5s ease both;
+    }
+    .year-section   { animation-delay: 0.1s; }
+    .sections-grid  { animation-delay: 0.18s; }
+    .footer-actions { animation-delay: 0.26s; }
+
+    .section-btn {
+      animation: fadeUp 0.4s ease both;
+    }
+    .section-btn:nth-child(1) { animation-delay: 0.2s; }
+    .section-btn:nth-child(2) { animation-delay: 0.25s; }
+    .section-btn:nth-child(3) { animation-delay: 0.3s; }
+    .section-btn:nth-child(4) { animation-delay: 0.35s; }
+    .section-btn:nth-child(5) { animation-delay: 0.4s; }
+    .section-btn:nth-child(6) { animation-delay: 0.45s; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="ambient">
+    <div class="ambient-blob"></div>
+    <div class="ambient-blob"></div>
+    <div class="ambient-blob"></div>
+  </div>
+
+  <div class="wrapper">
+
+    <!-- TÍTULO -->
+    <header class="header">
+      <div class="title-frame">
+        <div class="title-inner">El<span>.</span>Trackerino</div>
+      </div>
+      <p class="title-sub">Tu colección personal · año a año</p>
+    </header>
+
+    <!-- PESTAÑAS DE AÑO -->
+    <div class="year-section">
+      <div class="year-tabs-label">Selecciona un año</div>
+      <div class="year-tabs-row" id="year-tabs-row">
+        <!-- Generado por JS -->
+      </div>
+    </div>
+
+    <!-- BOTONES DE SECCIÓN -->
+    <div class="sections-grid" id="sections-grid">
+      <a class="section-btn sec-peliculas" id="btn-peliculas">
+        <span class="section-emoji">🎬</span>
+        <span class="section-label">Películas</span>
+        <span class="section-count" id="count-pelicula">0</span>
+      </a>
+      <a class="section-btn sec-series" id="btn-series">
+        <span class="section-emoji">📺</span>
+        <span class="section-label">Series</span>
+        <span class="section-count" id="count-serie">0</span>
+      </a>
+      <a class="section-btn sec-animes" id="btn-animes">
+        <span class="section-emoji">🎌</span>
+        <span class="section-label">Animes</span>
+        <span class="section-count" id="count-anime">0</span>
+      </a>
+      <a class="section-btn sec-videojuegos" id="btn-videojuegos">
+        <span class="section-emoji">🎮</span>
+        <span class="section-label">Videojuegos</span>
+        <span class="section-count" id="count-videojuego">0</span>
+      </a>
+      <a class="section-btn sec-libros" id="btn-libros">
+        <span class="section-emoji">📚</span>
+        <span class="section-label">Libros</span>
+        <span class="section-count" id="count-libro">0</span>
+      </a>
+      <a class="section-btn sec-tareas" id="btn-tareas">
+        <span class="section-emoji">✅</span>
+        <span class="section-label">Tareas</span>
+        <span class="section-count" style="display:none"></span>
+      </a>
+    </div>
+
+    <!-- ACCIONES PIE -->
+    <div class="footer-actions">
+      <button class="foot-btn" onclick="exportData()">⬇ Exportar backup</button>
+      <button class="foot-btn" onclick="importData()">⬆ Importar backup</button>
+    </div>
+
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ── YEAR STORAGE ──────────────────────────────────────────────────────────
+    const YEARS_KEY    = 'trackerino_years_v1';
+    const ACTIVE_YEAR_KEY = 'trackerino_active_year';
+
+    function loadYears() {
+      try { return JSON.parse(localStorage.getItem(YEARS_KEY)) || [new Date().getFullYear()]; }
+      catch { return [new Date().getFullYear()]; }
+    }
+    function saveYears(years) {
+      localStorage.setItem(YEARS_KEY, JSON.stringify(years));
+    }
+    function getActiveYear() {
+      const stored = localStorage.getItem(ACTIVE_YEAR_KEY);
+      if (stored) return parseInt(stored);
+      const years = loadYears();
+      return years[years.length - 1]; // default: most recent
+    }
+    function setActiveYear(year) {
+      localStorage.setItem(ACTIVE_YEAR_KEY, year.toString());
+    }
+
+    // ── MEDIA DATA (per year) ─────────────────────────────────────────────────
+    function storageKey(year) {
+      return `mediatracker_${year}_v1`;
+    }
+    function loadDataForYear(year) {
+      try { return JSON.parse(localStorage.getItem(storageKey(year))) || { items: [] }; }
+      catch { return { items: [] }; }
+    }
+
+    // ── COUNTS ───────────────────────────────────────────────────────────────
+    function updateCounts(year) {
+      const data = loadDataForYear(year);
+      const counts = { pelicula: 0, serie: 0, anime: 0, videojuego: 0, libro: 0 };
+      data.items.forEach(i => { if (counts[i.type] !== undefined) counts[i.type]++; });
+      Object.entries(counts).forEach(([type, count]) => {
+        const el = document.getElementById(`count-${type}`);
+        if (el) el.textContent = count;
+      });
+    }
+
+    // ── NAV LINKS ─────────────────────────────────────────────────────────────
+    function updateNavLinks(year) {
+      document.getElementById('btn-peliculas').href   = `peliculas.html?year=${year}`;
+      document.getElementById('btn-series').href      = `series.html?year=${year}`;
+      document.getElementById('btn-animes').href      = `animes.html?year=${year}`;
+      document.getElementById('btn-videojuegos').href = `videojuegos.html?year=${year}`;
+      document.getElementById('btn-libros').href      = `libros.html?year=${year}`;
+      document.getElementById('btn-tareas').href      = `tareas.html?year=${year}`;
+    }
+
+    // ── RENDER TABS ───────────────────────────────────────────────────────────
+    function renderTabs() {
+      const years      = loadYears();
+      const activeYear = getActiveYear();
+      const row        = document.getElementById('year-tabs-row');
+      row.innerHTML    = '';
+
+      years.forEach(year => {
+        const tab = document.createElement('button');
+        tab.className = 'year-tab' + (year === activeYear ? ' active' : '');
+        tab.innerHTML = `
+          <span>${year}</span>
+          ${years.length > 1
+            ? `<span class="year-tab-delete" onclick="deleteYear(event, ${year})" title="Eliminar año ${year}">✕</span>`
+            : ''}
+        `;
+        tab.addEventListener('click', (e) => {
+          if (e.target.classList.contains('year-tab-delete')) return;
+          switchYear(year);
+        });
+        row.appendChild(tab);
+      });
+
+      // Botón + para añadir año
+      const addBtn = document.createElement('button');
+      addBtn.className = 'year-add-btn';
+      addBtn.title = 'Añadir nuevo año';
+      addBtn.textContent = '＋';
+      addBtn.addEventListener('click', addYear);
+      row.appendChild(addBtn);
+    }
+
+    function switchYear(year) {
+      setActiveYear(year);
+      renderTabs();
+      updateNavLinks(year);
+      updateCounts(year);
+    }
+
+    function addYear() {
+      const years = loadYears();
+      const nextYear = Math.max(...years) + 1;
+      if (years.includes(nextYear)) return;
+      years.push(nextYear);
+      years.sort((a, b) => a - b);
+      saveYears(years);
+      switchYear(nextYear);
+      toast(`Año ${nextYear} añadido`, 'success');
+    }
+
+    function deleteYear(e, year) {
+      e.stopPropagation();
+      const years = loadYears();
+      if (years.length <= 1) { toast('Debes tener al menos un año', 'error'); return; }
+      if (!confirm(`¿Eliminar el año ${year} y todos sus datos?\n\nEsta acción no se puede deshacer.`)) return;
+
+      // Delete all data for this year
+      localStorage.removeItem(storageKey(year));
+      localStorage.removeItem(`trackerino_tareas_${year}_v1`);
+
+      const newYears = years.filter(y => y !== year);
+      saveYears(newYears);
+
+      const activeYear = getActiveYear();
+      if (activeYear === year) {
+        switchYear(newYears[newYears.length - 1]);
+      } else {
+        renderTabs();
+      }
+      toast(`Año ${year} eliminado`, '');
+    }
+
+    // ── EXPORT / IMPORT ───────────────────────────────────────────────────────
+    function exportData() {
+      const years = loadYears();
+      const backup = {
+        version: 2,
+        exportedAt: new Date().toISOString(),
+        years,
+        data: {},
+      };
+      years.forEach(year => {
+        backup.data[year] = {
+          media: loadDataForYear(year),
+          tareas: (() => {
+            try { return JSON.parse(localStorage.getItem(`trackerino_tareas_${year}_v1`)) || { lists: [] }; }
+            catch { return { lists: [] }; }
+          })(),
+        };
+      });
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href = url;
+      a.download = `eltrackerino-backup-${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast('Backup exportado ✓', 'success');
+    }
+
+    function importData() {
+      const input = document.createElement('input');
+      input.type  = 'file';
+      input.accept = '.json,application/json';
+      input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            const parsed = JSON.parse(ev.target.result);
+
+            // v2 format
+            if (parsed.version === 2 && parsed.data) {
+              const totalItems = Object.values(parsed.data).reduce((acc, d) => acc + (d.media?.items?.length || 0), 0);
+              if (!confirm(`¿Importar backup de ${parsed.years?.length || 0} años con ${totalItems} entradas? Se reemplazarán todos los datos actuales.`)) return;
+              saveYears(parsed.years || [new Date().getFullYear()]);
+              Object.entries(parsed.data).forEach(([year, d]) => {
+                if (d.media) localStorage.setItem(storageKey(parseInt(year)), JSON.stringify(d.media));
+                if (d.tareas) localStorage.setItem(`trackerino_tareas_${year}_v1`, JSON.stringify(d.tareas));
+              });
+              const lastYear = parsed.years?.[parsed.years.length - 1] || new Date().getFullYear();
+              switchYear(lastYear);
+              toast('Backup importado correctamente ✓', 'success');
+              return;
+            }
+
+            // Legacy v1 format — import into current year
+            const mediaData = parsed.mediatracker || parsed;
+            if (!Array.isArray(mediaData.items)) throw new Error('Formato inválido');
+            const year = getActiveYear();
+            if (!confirm(`¿Importar backup antiguo en el año ${year}? Se reemplazarán sus datos.`)) return;
+            localStorage.setItem(storageKey(year), JSON.stringify(mediaData));
+            if (parsed.tareas) localStorage.setItem(`trackerino_tareas_${year}_v1`, JSON.stringify(parsed.tareas));
+            updateCounts(year);
+            toast('Backup importado correctamente ✓', 'success');
+
+          } catch (err) {
+            toast('Error al leer el archivo: ' + err.message, 'error');
+          }
+        };
+        reader.readAsText(file);
+      };
+      input.click();
+    }
+
+    // ── TOAST ─────────────────────────────────────────────────────────────────
+    function toast(msg, type = '') {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.className = `toast ${type} show`;
+      clearTimeout(el._t);
+      el._t = setTimeout(() => el.classList.remove('show'), 2500);
+    }
+
+    // ── INIT ──────────────────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', () => {
+      const activeYear = getActiveYear();
+      renderTabs();
+      updateNavLinks(activeYear);
+      updateCounts(activeYear);
+    });
+  </script>
+</body>
+</html>

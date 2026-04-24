@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>El.Trackerino · Tareas</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* ── TAREAS PAGE STYLES ───────────────────────────────────────────── */
+
+    /* Board wrapper with arrow buttons */
+    .tareas-board-wrapper {
+      position: relative;
+    }
+
+    .board-scroll-btn {
+      display: none;
+      position: fixed;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 200;
+      width: 44px;
+      height: 70px;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      font-size: 1.4rem;
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, color 0.15s;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+    .board-scroll-btn:hover { background: var(--bg4); color: var(--accent); }
+    .board-scroll-btn.visible { display: flex; }
+    /* left button sits right at the edge of the main content area (sidebar = 260px) */
+    .board-scroll-btn.left  { left: 260px; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; border-left: none; }
+    .board-scroll-btn.right { right: 0;    border-radius: var(--radius-sm) 0 0 var(--radius-sm); border-right: none; }
+
+    .tareas-board {
+      display: flex;
+      gap: 1.2rem;
+      align-items: flex-start;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      padding-bottom: 1rem;
+      scroll-behavior: smooth;
+      /* Hide scrollbar visually but keep functional */
+      scrollbar-width: thin;
+    }
+
+    /* ── TASK LIST COLUMN ── */
+    .task-list-col {
+      flex: 0 0 300px;
+      width: 300px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .task-list-col.color-red    { border-top: 3px solid #ff5555; }
+    .task-list-col.color-orange { border-top: 3px solid #ff9944; }
+    .task-list-col.color-yellow { border-top: 3px solid #e8ff47; }
+    .task-list-col.color-green  { border-top: 3px solid #4dff91; }
+    .task-list-col.color-blue   { border-top: 3px solid #5599ff; }
+    .task-list-col.color-purple { border-top: 3px solid #aa77ff; }
+    .task-list-col.color-pink   { border-top: 3px solid #ff77bb; }
+    .task-list-col.color-gray   { border-top: 3px solid #666; }
+
+    .task-list-header {
+      padding: 0.9rem 1rem 0.8rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .task-list-title {
+      flex: 1;
+      font-family: 'Syne', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 700;
+      background: none;
+      border: none;
+      color: var(--text);
+      outline: none;
+      min-width: 0;
+      cursor: text;
+    }
+    .task-list-title:focus {
+      border-bottom: 1px solid var(--border2);
+    }
+
+    /* Color picker */
+    .color-picker-wrap { position: relative; }
+    .color-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid rgba(255,255,255,0.15);
+      flex-shrink: 0;
+      transition: transform 0.15s;
+    }
+    .color-dot:hover { transform: scale(1.25); }
+    .color-dot.red    { background: #ff5555; }
+    .color-dot.orange { background: #ff9944; }
+    .color-dot.yellow { background: #e8ff47; }
+    .color-dot.green  { background: #4dff91; }
+    .color-dot.blue   { background: #5599ff; }
+    .color-dot.purple { background: #aa77ff; }
+    .color-dot.pink   { background: #ff77bb; }
+    .color-dot.gray   { background: #666; }
+
+    .color-palette {
+      display: none;
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      padding: 8px;
+      flex-wrap: wrap;
+      gap: 6px;
+      width: 120px;
+      z-index: 500;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    .color-palette.open { display: flex; }
+    .color-palette-dot {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: transform 0.15s, border-color 0.15s;
+    }
+    .color-palette-dot:hover { transform: scale(1.2); }
+    .color-palette-dot.active { border-color: rgba(255,255,255,0.6); }
+    .color-palette-dot.red    { background: #ff5555; }
+    .color-palette-dot.orange { background: #ff9944; }
+    .color-palette-dot.yellow { background: #e8ff47; }
+    .color-palette-dot.green  { background: #4dff91; }
+    .color-palette-dot.blue   { background: #5599ff; }
+    .color-palette-dot.purple { background: #aa77ff; }
+    .color-palette-dot.pink   { background: #ff77bb; }
+    .color-palette-dot.gray   { background: #666; }
+
+    .task-list-delete {
+      background: none;
+      border: none;
+      color: var(--text3);
+      cursor: pointer;
+      font-size: 0.9rem;
+      padding: 2px 4px;
+      border-radius: 4px;
+      transition: color 0.15s;
+      flex-shrink: 0;
+    }
+    .task-list-delete:hover { color: var(--red); }
+
+    /* ── TASK ITEMS ── */
+    .task-items {
+      padding: 0.5rem 0.7rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      min-height: 40px;
+    }
+
+    .task-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 4px;
+      border-radius: 6px;
+      transition: background 0.15s;
+      cursor: default;
+    }
+    .task-item:hover { background: rgba(255,255,255,0.03); }
+    .task-item.dragging { opacity: 0.3; }
+
+    .task-drag-handle {
+      cursor: grab;
+      display: flex;
+      flex-direction: column;
+      gap: 2.5px;
+      padding: 2px;
+      opacity: 0;
+      transition: opacity 0.15s;
+      flex-shrink: 0;
+      touch-action: none;
+    }
+    .task-drag-handle:active { cursor: grabbing; }
+    .task-drag-handle span {
+      display: block;
+      width: 11px;
+      height: 1.5px;
+      background: var(--text3);
+      border-radius: 2px;
+    }
+    .task-item:hover .task-drag-handle { opacity: 1; }
+
+    .task-checkbox {
+      width: 15px;
+      height: 15px;
+      border: 1.5px solid var(--border2);
+      border-radius: 4px;
+      background: transparent;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      flex-shrink: 0;
+      position: relative;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .task-checkbox:checked {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+    .task-checkbox:checked::after {
+      content: '';
+      position: absolute;
+      left: 3px; top: 1px;
+      width: 5px; height: 8px;
+      border: 2px solid #000;
+      border-top: none;
+      border-left: none;
+      transform: rotate(45deg);
+    }
+
+    .task-text {
+      flex: 1;
+      font-size: 0.85rem;
+      color: var(--text);
+      background: none;
+      border: none;
+      outline: none;
+      font-family: 'DM Sans', sans-serif;
+      min-width: 0;
+      padding: 0;
+      cursor: text;
+    }
+    .task-text.done {
+      text-decoration: line-through;
+      color: var(--text3);
+    }
+
+    .task-delete {
+      background: none;
+      border: none;
+      color: var(--text3);
+      cursor: pointer;
+      font-size: 0.75rem;
+      padding: 2px 5px;
+      border-radius: 3px;
+      transition: color 0.15s;
+      opacity: 0;
+      flex-shrink: 0;
+    }
+    .task-item:hover .task-delete { opacity: 1; }
+    .task-delete:hover { color: var(--red); }
+
+    /* Drag placeholder for tasks */
+    .task-drag-placeholder {
+      height: 30px;
+      background: rgba(232,255,71,0.05);
+      border: 1.5px dashed rgba(232,255,71,0.2);
+      border-radius: 5px;
+      margin: 2px 0;
+      pointer-events: none;
+    }
+
+    /* ── ADD TASK ROW ── */
+    .task-add-row {
+      padding: 0.5rem 1rem 0.8rem;
+      border-top: 1px solid var(--border);
+    }
+    .task-add-input {
+      width: 100%;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.82rem;
+      padding: 0.4rem 0.7rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .task-add-input:focus { border-color: var(--accent); }
+    .task-add-input::placeholder { color: var(--text3); }
+
+    /* ── ADD LIST BUTTON ── */
+    .add-list-btn {
+      flex: 0 0 auto;
+      width: 260px;
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      background: transparent;
+      color: var(--text3);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+      padding: 2rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 120px;
+    }
+    .add-list-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* Progress bar */
+    .task-progress-bar {
+      height: 2px;
+      background: var(--bg4);
+      position: relative;
+      overflow: hidden;
+    }
+    .task-progress-fill {
+      height: 100%;
+      background: var(--accent);
+      transition: width 0.3s;
+    }
+  </style>
+
+  <style>
+    .sidebar-year-badge {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.4rem 0.2rem 0.8rem;
+      margin-bottom: 0.2rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .back-to-menu {
+      font-size: 0.72rem;
+      color: var(--text3);
+      text-decoration: none;
+      transition: color 0.15s;
+      letter-spacing: 0.02em;
+    }
+    .back-to-menu:hover { color: var(--accent); }
+    .year-badge-pill {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--accent);
+      background: rgba(232,255,71,0.08);
+      border: 1px solid rgba(232,255,71,0.2);
+      border-radius: 20px;
+      padding: 2px 10px;
+      letter-spacing: 0.05em;
+    }
+  </style>
+
+</head>
+<body>
+  <script>
+    // ── YEAR PARAM PROPAGATION ────────────────────────────────────────────────
+    (function() {
+      const params = new URLSearchParams(window.location.search);
+      const year = params.get('year');
+      if (!year) return;
+      // Rewrite all nav links to include year param
+      document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.nav-item').forEach(function(a) {
+          const href = a.getAttribute('href');
+          if (href && !href.includes('?')) {
+            a.setAttribute('href', href + '?year=' + year);
+          }
+        });
+        // Show year in sidebar logo area
+        const yearEl = document.getElementById('sidebar-year-label');
+        if (yearEl) yearEl.textContent = year;
+        // Show year in topbar
+        const topbarYear = document.getElementById('topbar-year');
+        if (topbarYear) topbarYear.textContent = year;
+      });
+    })();
+  </script>
+
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <h1>El<span>.</span>Trackerino</h1>
+      <p>Tu colección personal</p>
+    </div>
+
+    
+    <div class="sidebar-year-badge">
+      <a href="index.html" class="back-to-menu" title="Volver al menú">← Menú</a>
+      <span class="year-badge-pill" id="sidebar-year-label">—</span>
+    </div>
+
+    <span class="nav-label">Secciones</span>
+    <a href="index.html" class="nav-item">
+      <span class="nav-icon">⊞</span> Todos los medios
+    </a>
+    <a href="peliculas.html" class="nav-item">
+      <span class="nav-icon">🎬</span> Películas
+    </a>
+    <a href="series.html" class="nav-item">
+      <span class="nav-icon">📺</span> Series
+    </a>
+    <a href="animes.html" class="nav-item">
+      <span class="nav-icon">🎌</span> Animes
+    </a>
+    <a href="videojuegos.html" class="nav-item">
+      <span class="nav-icon">🎮</span> Videojuegos
+    </a>
+    <a href="libros.html" class="nav-item">
+      <span class="nav-icon">📚</span> Libros
+    </a>
+    <a href="tareas.html" class="nav-item active">
+      <span class="nav-icon">✅</span> Tareas
+    </a>
+
+    <div class="sidebar-actions">
+      <button class="sidebar-action-btn" onclick="exportData()" title="Exportar backup JSON">⬇ Exportar</button>
+      <button class="sidebar-action-btn" onclick="importData()" title="Importar backup JSON">⬆ Importar</button>
+    </div>
+
+    <div class="sidebar-counts">
+      <p>Total por categoría</p>
+      <div class="count-row"><span>🎬 Películas</span><span class="count-badge" id="count-pelicula">0</span></div>
+      <div class="count-row"><span>📺 Series</span><span class="count-badge" id="count-serie">0</span></div>
+      <div class="count-row"><span>🎌 Animes</span><span class="count-badge" id="count-anime">0</span></div>
+      <div class="count-row"><span>🎮 Videojuegos</span><span class="count-badge" id="count-videojuego">0</span></div>
+      <div class="count-row"><span>📚 Libros</span><span class="count-badge" id="count-libro">0</span></div>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="topbar">
+      <span class="topbar-title">✅ Tareas</span>
+      <div class="topbar-actions">
+        <button class="btn-add" onclick="addList()">＋ Nueva lista</button>
+      </div>
+    </div>
+
+    <div class="page-content">
+      <div class="tareas-board-wrapper">
+        <button class="board-scroll-btn left" id="scroll-left" onclick="scrollBoard(-1)">&#8249;</button>
+        <div class="tareas-board" id="tareas-board"></div>
+        <button class="board-scroll-btn right" id="scroll-right" onclick="scrollBoard(1)">&#8250;</button>
+      </div>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+  <script src="tareas.js"></script>
+</body>
+</html>

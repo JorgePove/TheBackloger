@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>El.Trackerino · Series</title>
+  <link rel="stylesheet" href="style.css">
+
+  <style>
+    .sidebar-year-badge {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.4rem 0.2rem 0.8rem;
+      margin-bottom: 0.2rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .back-to-menu {
+      font-size: 0.72rem;
+      color: var(--text3);
+      text-decoration: none;
+      transition: color 0.15s;
+      letter-spacing: 0.02em;
+    }
+    .back-to-menu:hover { color: var(--accent); }
+    .year-badge-pill {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--accent);
+      background: rgba(232,255,71,0.08);
+      border: 1px solid rgba(232,255,71,0.2);
+      border-radius: 20px;
+      padding: 2px 10px;
+      letter-spacing: 0.05em;
+    }
+  </style>
+
+</head>
+<body>
+  <script>
+    // ── YEAR PARAM PROPAGATION ────────────────────────────────────────────────
+    (function() {
+      const params = new URLSearchParams(window.location.search);
+      const year = params.get('year');
+      if (!year) return;
+      // Rewrite all nav links to include year param
+      document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.nav-item').forEach(function(a) {
+          const href = a.getAttribute('href');
+          if (href && !href.includes('?')) {
+            a.setAttribute('href', href + '?year=' + year);
+          }
+        });
+        // Show year in sidebar logo area
+        const yearEl = document.getElementById('sidebar-year-label');
+        if (yearEl) yearEl.textContent = year;
+        // Show year in topbar
+        const topbarYear = document.getElementById('topbar-year');
+        if (topbarYear) topbarYear.textContent = year;
+      });
+    })();
+  </script>
+
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <h1>El<span>.</span>Trackerino</h1>
+      <p>Tu colección personal</p>
+    </div>
+
+    
+    <div class="sidebar-year-badge">
+      <a href="index.html" class="back-to-menu" title="Volver al menú">← Menú</a>
+      <span class="year-badge-pill" id="sidebar-year-label">—</span>
+    </div>
+
+    <span class="nav-label">Secciones</span>
+    <a href="index.html" class="nav-item">
+      <span class="nav-icon">⊞</span> Todos los medios
+    </a>
+    <a href="peliculas.html" class="nav-item ">
+      <span class="nav-icon">🎬</span> Películas
+    </a>
+    <a href="series.html" class="nav-item active">
+      <span class="nav-icon">📺</span> Series
+    </a>
+    <a href="animes.html" class="nav-item ">
+      <span class="nav-icon">🎌</span> Animes
+    </a>
+    <a href="videojuegos.html" class="nav-item ">
+      <span class="nav-icon">🎮</span> Videojuegos
+    </a>
+    <a href="libros.html" class="nav-item ">
+      <span class="nav-icon">📚</span> Libros
+    </a>
+    <a href="tareas.html" class="nav-item">
+      <span class="nav-icon">✅</span> Tareas
+    </a>
+
+
+    <div class="sidebar-actions">
+      <button class="sidebar-action-btn" onclick="exportData()" title="Exportar backup JSON">⬇ Exportar</button>
+      <button class="sidebar-action-btn" onclick="importData()" title="Importar backup JSON">⬆ Importar</button>
+    </div>
+
+    <div class="sidebar-counts">
+      <p>Total por categoría</p>
+      <div class="count-row"><span>🎬 Películas</span><span class="count-badge" id="count-pelicula">0</span></div>
+      <div class="count-row"><span>📺 Series</span><span class="count-badge" id="count-serie">0</span></div>
+      <div class="count-row"><span>🎌 Animes</span><span class="count-badge" id="count-anime">0</span></div>
+      <div class="count-row"><span>🎮 Videojuegos</span><span class="count-badge" id="count-videojuego">0</span></div>
+      <div class="count-row"><span>📚 Libros</span><span class="count-badge" id="count-libro">0</span></div>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="topbar">
+      <span class="topbar-title">📺 Series</span>
+      <div class="topbar-actions">
+        <button class="btn-add" onclick="openModal('serie')">
+          ＋ Añadir serie
+        </button>
+      </div>
+    </div>
+
+    <div class="page-content">
+      <div class="stats-row" id="stats-row"></div>
+
+      <!-- Kanban board -->
+      <div class="kanban">
+        <!-- PENDIENTES -->
+        <div class="kanban-col col-pending">
+          <div class="kanban-header">
+            <h3>Pendiente</h3>
+            <input type="text" id="search-col-pending" class="col-search-input" placeholder="🔍 Buscar…">
+            <span class="col-count" id="count-pending">0</span>
+          </div>
+          <div class="kanban-items" id="col-pending"></div>
+        </div>
+
+        <!-- EN PROGRESO -->
+        <div class="kanban-col col-progress">
+          <div class="kanban-header">
+            <h3>En progreso</h3>
+            <input type="text" id="search-col-progress" class="col-search-input" placeholder="🔍 Buscar…">
+            <span class="col-count" id="count-progress">0</span>
+          </div>
+          <div class="kanban-items" id="col-progress"></div>
+        </div>
+
+        <!-- COMPLETADOS -->
+        <div class="kanban-col col-completed">
+          <div class="kanban-header">
+            <h3>Completado</h3>
+            <input type="text" id="search-col-completed" class="col-search-input" placeholder="🔍 Buscar…">
+            <span class="col-count" id="count-completed">0</span>
+          </div>
+          <div class="kanban-items" id="col-completed"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+  <script>
+    const serie = 'serie';
+
+    function renderPage() {
+      const items = getItemsByType(serie);
+
+      const pending   = items.filter(i => i.status === 'pending');
+      const progress  = items.filter(i => i.status === 'progress');
+      const completed = items.filter(i => i.status === 'completed' || i.status === 'abandoned');
+
+      document.getElementById('count-pending').textContent  = pending.length;
+      document.getElementById('count-progress').textContent = progress.length;
+      document.getElementById('count-completed').textContent = completed.length;
+
+      registerColItems('col-pending',   pending);
+      registerColItems('col-progress',  progress);
+      registerColItems('col-completed', completed);
+      renderCol('col-pending',   pending);
+      renderCol('col-progress',  progress);
+      renderCol('col-completed', completed);
+      if (typeof initAllDrag === 'function') initAllDrag();
+      initColSearch();
+
+      // Stats
+      const avg = avgScore(items);
+      document.getElementById('stats-row').innerHTML = `
+        <div class="stat-pill"><strong>${items.length}</strong> en total</div>
+        <div class="stat-pill"><strong>${completed.length}</strong> completados</div>
+        <div class="stat-pill"><strong>${progress.length}</strong> en progreso</div>
+        <div class="stat-pill"><strong>${pending.length}</strong> pendientes</div>
+        ${avg !== null ? `<div class="stat-pill"><strong>★ ${avg}</strong> media</div>` : ''}
+      `;
+
+      updateSidebarCounts();
+    }
+
+    function renderCol(colId, items) {
+      const el = document.getElementById(colId);
+      if (!items.length) {
+        el.innerHTML = `<div class="empty-state"><div class="empty-icon">○</div>Vacío</div>`;
+        return;
+      }
+      el.innerHTML = items.map(kanbanCardHTML).join('');
+    }
+
+    document.addEventListener('DOMContentLoaded', renderPage);
+  </script>
+</body>
+</html>
