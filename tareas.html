@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>El.Trackerino · Tareas</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* ── TAREAS BOARD ──────────────────────────────────────────────────── */
+    .tareas-board-wrapper { position: relative; }
+
+    .board-scroll-btn {
+      display: none;
+      position: fixed;
+      top: 50%; transform: translateY(-50%);
+      z-index: 200;
+      width: 44px; height: 70px;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      font-size: 1.4rem;
+      cursor: pointer;
+      align-items: center; justify-content: center;
+      transition: background 0.15s, color 0.15s;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+    .board-scroll-btn:hover { background: var(--bg4); color: var(--cyan); }
+    .board-scroll-btn.visible { display: flex; }
+    .board-scroll-btn.left  { left: var(--sidebar); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; border-left: none; }
+    .board-scroll-btn.right { right: 0; border-radius: var(--radius-sm) 0 0 var(--radius-sm); border-right: none; }
+
+    .tareas-board {
+      display: flex;
+      gap: 1.2rem;
+      align-items: flex-start;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      padding-bottom: 1rem;
+      scroll-behavior: smooth;
+      scrollbar-width: thin;
+    }
+
+    /* ── TASK LIST COLUMN ── */
+    .task-list-col {
+      flex: 0 0 300px; width: 300px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden; display: flex; flex-direction: column;
+    }
+    .task-list-col.color-red    { border-top: 2px solid #ff4466; }
+    .task-list-col.color-orange { border-top: 2px solid #ff8c00; }
+    .task-list-col.color-yellow { border-top: 2px solid var(--cyan); }
+    .task-list-col.color-green  { border-top: 2px solid var(--green-neon); }
+    .task-list-col.color-blue   { border-top: 2px solid var(--blue-bright); }
+    .task-list-col.color-purple { border-top: 2px solid var(--purple-glow); }
+    .task-list-col.color-pink   { border-top: 2px solid var(--magenta); }
+    .task-list-col.color-gray   { border-top: 2px solid #444; }
+
+    .task-list-header {
+      padding: 0.85rem 1rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 7px;
+      background: rgba(0,0,0,0.2);
+    }
+
+    .task-list-title {
+      flex: 1;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.05em;
+      text-transform: uppercase;
+      background: none; border: none; color: var(--text);
+      outline: none; min-width: 0; cursor: text;
+    }
+    .task-list-title:focus { border-bottom: 1px solid var(--border2); }
+
+    /* Color picker */
+    .color-picker-wrap { position: relative; }
+    .color-dot {
+      width: 12px; height: 12px; border-radius: 50%;
+      cursor: pointer; border: 1.5px solid rgba(255,255,255,0.15);
+      flex-shrink: 0; transition: transform 0.15s;
+    }
+    .color-dot:hover { transform: scale(1.3); }
+    .color-dot.red    { background: #ff4466; }
+    .color-dot.orange { background: #ff8c00; }
+    .color-dot.yellow { background: var(--cyan); box-shadow: 0 0 6px rgba(0,229,204,0.4); }
+    .color-dot.green  { background: var(--green-neon); }
+    .color-dot.blue   { background: var(--blue-bright); }
+    .color-dot.purple { background: var(--purple-glow); }
+    .color-dot.pink   { background: var(--magenta); }
+    .color-dot.gray   { background: #444; }
+
+    .color-palette {
+      display: none; position: absolute;
+      top: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+      background: var(--bg3); border: 1px solid var(--border2);
+      border-radius: 10px; padding: 8px;
+      flex-wrap: wrap; gap: 6px; width: 116px;
+      z-index: 500; box-shadow: 0 8px 24px rgba(0,0,0,0.5), var(--glow-cyan);
+    }
+    .color-palette.open { display: flex; }
+    .color-palette-dot {
+      width: 18px; height: 18px; border-radius: 50%;
+      cursor: pointer; border: 2px solid transparent;
+      transition: transform 0.15s, border-color 0.15s;
+    }
+    .color-palette-dot:hover { transform: scale(1.2); }
+    .color-palette-dot.active { border-color: rgba(255,255,255,0.6); }
+    .color-palette-dot.red    { background: #ff4466; }
+    .color-palette-dot.orange { background: #ff8c00; }
+    .color-palette-dot.yellow { background: var(--cyan); }
+    .color-palette-dot.green  { background: var(--green-neon); }
+    .color-palette-dot.blue   { background: var(--blue-bright); }
+    .color-palette-dot.purple { background: var(--purple-glow); }
+    .color-palette-dot.pink   { background: var(--magenta); }
+    .color-palette-dot.gray   { background: #444; }
+
+    .task-list-delete {
+      background: none; border: none; color: var(--text3);
+      cursor: pointer; font-size: 0.85rem; padding: 2px 4px;
+      border-radius: 4px; transition: color 0.15s; flex-shrink: 0;
+    }
+    .task-list-delete:hover { color: var(--red); }
+
+    /* ── TASK ITEMS ── */
+    .task-items {
+      padding: 0.5rem 0.7rem;
+      display: flex; flex-direction: column; gap: 0;
+      min-height: 40px;
+    }
+    .task-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 4px; border-radius: 5px;
+      transition: background 0.15s; cursor: default;
+    }
+    .task-item:hover { background: rgba(0,229,204,0.03); }
+    .task-item.dragging { opacity: 0.3; }
+
+    .task-drag-handle {
+      cursor: grab; display: flex; flex-direction: column;
+      gap: 2.5px; padding: 2px; opacity: 0;
+      transition: opacity 0.15s; flex-shrink: 0; touch-action: none;
+    }
+    .task-drag-handle:active { cursor: grabbing; }
+    .task-drag-handle span {
+      display: block; width: 11px; height: 1.5px;
+      background: var(--text3); border-radius: 2px;
+    }
+    .task-item:hover .task-drag-handle { opacity: 1; }
+
+    .task-checkbox {
+      width: 14px; height: 14px;
+      border: 1.5px solid var(--border2); border-radius: 3px;
+      background: transparent; cursor: pointer;
+      appearance: none; -webkit-appearance: none;
+      flex-shrink: 0; position: relative;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .task-checkbox:checked { background: var(--cyan); border-color: var(--cyan); }
+    .task-checkbox:checked::after {
+      content: ''; position: absolute;
+      left: 3px; top: 1px; width: 5px; height: 7px;
+      border: 2px solid #000; border-top: none; border-left: none;
+      transform: rotate(45deg);
+    }
+
+    .task-text {
+      flex: 1; font-size: 0.85rem; color: var(--text);
+      background: none; border: none; outline: none;
+      font-family: 'Exo 2', sans-serif; min-width: 0; padding: 0; cursor: text;
+    }
+    .task-text.done { text-decoration: line-through; color: var(--text3); }
+
+    .task-delete {
+      background: none; border: none; color: var(--text3);
+      cursor: pointer; font-size: 0.72rem; padding: 2px 5px;
+      border-radius: 3px; transition: color 0.15s;
+      opacity: 0; flex-shrink: 0;
+    }
+    .task-item:hover .task-delete { opacity: 1; }
+    .task-delete:hover { color: var(--red); }
+
+    .task-drag-placeholder {
+      height: 30px;
+      background: rgba(0,229,204,0.04);
+      border: 1.5px dashed rgba(0,229,204,0.2);
+      border-radius: 5px; margin: 2px 0; pointer-events: none;
+    }
+
+    /* ── ADD TASK ROW ── */
+    .task-add-row {
+      padding: 0.5rem 1rem 0.8rem;
+      border-top: 1px solid var(--border);
+    }
+    .task-add-input {
+      width: 100%; background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 5px; color: var(--text);
+      font-family: 'Exo 2', sans-serif; font-size: 0.82rem;
+      padding: 0.4rem 0.7rem; outline: none; transition: border-color 0.2s;
+    }
+    .task-add-input:focus { border-color: var(--cyan); }
+    .task-add-input::placeholder { color: var(--text3); }
+
+    /* ── ADD LIST BUTTON ── */
+    .add-list-btn {
+      flex: 0 0 auto; width: 260px;
+      border: 1px dashed var(--border);
+      border-radius: var(--radius);
+      background: transparent; color: var(--text3);
+      font-family: 'Orbitron', sans-serif; font-size: 0.68rem;
+      font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+      cursor: pointer; transition: border-color 0.2s, color 0.2s, box-shadow 0.2s;
+      padding: 2rem 1rem;
+      display: flex; align-items: center; justify-content: center;
+      gap: 8px; min-height: 120px;
+    }
+    .add-list-btn:hover {
+      border-color: var(--cyan); color: var(--cyan); box-shadow: var(--glow-cyan);
+    }
+
+    /* ── PROGRESS BAR ── */
+    .task-progress-bar { height: 2px; background: var(--bg4); position: relative; overflow: hidden; }
+    .task-progress-fill { height: 100%; background: var(--cyan); transition: width 0.3s; }
+  </style>
+</head>
+<body>
+  <nav class="sidebar"></nav><!-- injected by sidebar.js -->
+
+  <main class="main">
+    <div class="topbar">
+      <span class="topbar-title">✅ Tareas</span>
+      <div class="topbar-actions">
+        <button class="btn-add" onclick="addList()">＋ Nueva lista</button>
+      </div>
+    </div>
+
+    <div class="page-content">
+      <div class="tareas-board-wrapper">
+        <button class="board-scroll-btn left" id="scroll-left" onclick="scrollBoard(-1)">&#8249;</button>
+        <div class="tareas-board" id="tareas-board"></div>
+        <button class="board-scroll-btn right" id="scroll-right" onclick="scrollBoard(1)">&#8250;</button>
+      </div>
+    </div>
+  </main>
+
+  <script src="sidebar.js"></script>
+  <script src="app.js"></script>
+  <script src="tareas.js"></script>
+</body>
+</html>
