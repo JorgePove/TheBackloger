@@ -130,9 +130,13 @@
       min-height: 40px;
     }
     .task-item {
-      display: flex; align-items: center; gap: 8px;
-      padding: 6px 4px; border-radius: 5px;
-      transition: background 0.15s; cursor: default;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 6px 4px;
+      border-radius: 5px;
+      transition: background 0.15s;
+      cursor: default;
     }
     .task-item:hover { background: rgba(0,229,204,0.03); }
     .task-item.dragging { opacity: 0.3; }
@@ -141,6 +145,7 @@
       cursor: grab; display: flex; flex-direction: column;
       gap: 2.5px; padding: 2px; opacity: 0;
       transition: opacity 0.15s; flex-shrink: 0; touch-action: none;
+      margin-top: 3px; /* align with first text line */
     }
     .task-drag-handle:active { cursor: grabbing; }
     .task-drag-handle span {
@@ -156,6 +161,7 @@
       appearance: none; -webkit-appearance: none;
       flex-shrink: 0; position: relative;
       transition: background 0.15s, border-color 0.15s;
+      margin-top: 3px; /* align with first text line */
     }
     .task-checkbox:checked { background: var(--cyan); border-color: var(--cyan); }
     .task-checkbox:checked::after {
@@ -166,11 +172,30 @@
     }
 
     .task-text {
-      flex: 1; font-size: 0.85rem; color: var(--text);
-      background: none; border: none; outline: none;
-      font-family: 'Exo 2', sans-serif; min-width: 0; padding: 0; cursor: text;
+      flex: 1;
+      font-size: 0.85rem;
+      color: var(--text);
+      background: none;
+      border: none;
+      outline: none;
+      font-family: 'Exo 2', sans-serif;
+      min-width: 0;
+      padding: 0;
+      cursor: text;
+      /* textarea-specific */
+      resize: none;
+      overflow: hidden;
+      line-height: 1.45;
+      display: block;
+      width: 100%;
+      height: auto;
+      word-break: break-word;
+      white-space: pre-wrap;
     }
-    .task-text.done { text-decoration: line-through; color: var(--text3); }
+    .task-text.done {
+      text-decoration: line-through;
+      color: var(--text3);
+    }
 
     .task-delete {
       background: none; border: none; color: var(--text3);
