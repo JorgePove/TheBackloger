@@ -44,6 +44,11 @@ function renderBoard() {
   // Init drag for each list
   data.lists.forEach(list => initTaskDrag(list.id));
 
+  // Size all task textareas to their content
+  setTimeout(() => {
+    document.querySelectorAll('.task-text').forEach(autoGrow);
+  }, 0);
+
   updateSidebarCounts();
   // Update scroll arrows after render
   setTimeout(updateScrollArrows, 0);
@@ -97,12 +102,20 @@ function buildTaskHTML(listId, task) {
       </div>
       <input type="checkbox" class="task-checkbox" ${task.done ? 'checked' : ''}
              onchange="toggleTask('${listId}','${task.id}',this.checked)">
-      <input type="text" class="task-text ${task.done ? 'done' : ''}"
-             value="${escHtml(task.text)}"
-             onchange="editTask('${listId}','${task.id}',this.value)"
-             onkeydown="if(event.key==='Enter'){this.blur();}">
+      <textarea class="task-text ${task.done ? 'done' : ''}"
+                rows="1"
+                onchange="editTask('${listId}','${task.id}',this.value)"
+                oninput="autoGrow(this)"
+                onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.blur();}"
+      >${escHtml(task.text)}</textarea>
       <button class="task-delete" onclick="deleteTask('${listId}','${task.id}')" title="Eliminar">✕</button>
     </div>`;
+}
+
+// Auto-grow textarea to fit content
+function autoGrow(el) {
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
 }
 
 function escHtml(str) {
@@ -211,7 +224,11 @@ function reRenderList(listId) {
   const list = data.lists.find(l => l.id === listId);
   if (!list) return;
   const container = document.getElementById(`tasks-${listId}`);
-  if (container) container.innerHTML = list.tasks.map(t => buildTaskHTML(listId, t)).join('');
+  if (container) {
+    container.innerHTML = list.tasks.map(t => buildTaskHTML(listId, t)).join('');
+    // Size all textareas to their content
+    container.querySelectorAll('.task-text').forEach(autoGrow);
+  }
   updateProgress(listId, list);
   initTaskDrag(listId);
 }
