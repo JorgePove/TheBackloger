@@ -136,6 +136,16 @@ function isTrackeringKey(key) {
 async function pullAllFromFirestore() {
   if (!currentUser) return;
 
+  // ── ANTI-LOOP GUARD ──────────────────────────────────────────────────────
+  // sessionStorage lives only for this browser tab session.
+  // If we already synced since the last manual navigation, skip.
+  const syncedKey = `fb_synced_${currentUser.uid}`;
+  if (sessionStorage.getItem(syncedKey)) {
+    // Already synced this session — just enable writes and return
+    syncEnabled = true;
+    return;
+  }
+
   showFbToast('Sincronizando datos…', '');
 
   // Get all keys we care about from local first
@@ -145,7 +155,7 @@ async function pullAllFromFirestore() {
     if (isTrackeringKey(k)) keysToSync.push(k);
   }
 
-  // Also try to fetch years list from Firestore (may have keys we don't have locally)
+  // Also fetch years list from Firestore (may have keys we don't have locally)
   const remoteYearsRaw = await firestoreGet('trackerino_years_v1');
   if (remoteYearsRaw) {
     try {
@@ -155,35 +165,47 @@ async function pullAllFromFirestore() {
           if (!keysToSync.includes(k)) keysToSync.push(k);
         });
       });
-      keysToSync.push('trackerino_years_v1');
-      keysToSync.push('trackerino_active_year');
+      if (!keysToSync.includes('trackerino_years_v1'))    keysToSync.push('trackerino_years_v1');
+      if (!keysToSync.includes('trackerino_active_year')) keysToSync.push('trackerino_active_year');
     } catch (_) {}
   }
 
-  // Pull each key from Firestore and write to localStorage if remote is newer/exists
-  let pulled = 0;
+  // Pull each key from Firestore; push to Firestore if only local exists
+  let pulledNew = false;
   await Promise.all(keysToSync.map(async key => {
     const remoteVal = await firestoreGet(key);
     if (remoteVal !== null) {
-      _origSet.call(localStorage, key, remoteVal);
-      pulled++;
+      const localVal = _origGet.call(localStorage, key);
+      if (localVal !== remoteVal) {
+        // Remote differs from local — remote wins (most recently updated device)
+        _origSet.call(localStorage, key, remoteVal);
+        pulledNew = true;
+      }
     } else {
-      // Push local value to Firestore if it exists
+      // Key only exists locally — push it to Firestore
       const localVal = _origGet.call(localStorage, key);
       if (localVal !== null) await firestoreSet(key, localVal);
     }
   }));
 
-  showFbToast(`Sincronizado ✓`, 'success');
+  // Mark this session as synced — prevents the reload loop
+  sessionStorage.setItem(syncedKey, '1');
+  syncEnabled = true;
 
-  // Reload page to reflect pulled data
-  setTimeout(() => window.location.reload(), 800);
+  if (pulledNew) {
+    // There were remote changes — reload once to render fresh data
+    showFbToast('Datos actualizados desde la nube, recargando…', 'success');
+    setTimeout(() => window.location.reload(), 1000);
+  } else {
+    showFbToast('Sincronizado ✓', 'success');
+  }
 }
 
 // ── AUTH STATE LISTENER ───────────────────────────────────────────────────────
 onAuthStateChanged(auth, async (user) => {
   currentUser = user;
-  syncEnabled = !!user;
+  // Don't enable sync writes until pull completes
+  syncEnabled = false;
   renderAuthBar(user);
 
   if (user) {
